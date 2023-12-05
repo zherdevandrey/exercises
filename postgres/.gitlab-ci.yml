@@ -1,0 +1,30 @@
+stages:
+  - build
+  - docker
+
+build-job:
+  stage: build
+  image: maven:latest
+  script:
+    - echo "Compiling the code..."
+    - mvn clean package
+    - echo "Compile complete."
+  artifacts:
+    paths:
+    - target
+
+docker-job:
+  stage: docker
+  image: docker:latest
+  services:
+    - docker:dind
+  tags:
+    - docker
+  before_script:
+    - VERSION=$(mvn --non-recursive help:evaluate -Dexpression=project.version | grep -v '\[.*')
+    - echo "version is $VERSION"
+    - echo "Login into dockerhub"
+    - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD"
+  script:
+    - docker build --pull -t "$CI_REGISTRY_USER/$CI_REGISTRY_IMAGE" .
+    - docker push "$CI_REGISTRY_USER/$CI_REGISTRY_IMAGE"
